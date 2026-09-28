@@ -1,0 +1,169 @@
+# Stack completo para produção local (5ª entrega): apps + infra + monitoramento
+# Uso: docker compose -f docker/compose/docker-compose.prod.yml up -d --build
+name: infnet-prod
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: infnet-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ../mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-padmin"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: infnet-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  zipkin:
+    image: openzipkin/zipkin:2
+    container_name: infnet-zipkin
+    ports:
+      - "9411:9411"
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: infnet-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - eureka-server
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: infnet-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+      - loki
+
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: infnet-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: infnet-promtail
+    volumes:
+      - ../monitoring/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+
+  eureka-server:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+      args:
+        MAVEN_MODULE: eureka-server
+    container_name: infnet-eureka
+    environment:
+      SERVER_PORT: "8761"
+      SPRING_PROFILES_ACTIVE: docker,observability
+    ports:
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8761/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  infnet-core:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+      args:
+        MAVEN_MODULE: infnet-core
+    container_name: infnet-core
+    environment:
+      SERVER_PORT: "8081"
+      SPRING_PROFILES_ACTIVE: docker,observability
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+
+  notificacao-service:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+      args:
+        MAVEN_MODULE: notificacao-service
+    container_name: infnet-notificacao
+    environment:
+      SERVER_PORT: "8082"
+      SPRING_PROFILES_ACTIVE: docker,observability
+    ports:
+      - "8082:8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+
+  api-gateway:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile
+      args:
+        MAVEN_MODULE: api-gateway
+    container_name: infnet-gateway
+    environment:
+      SERVER_PORT: "8080"
+      SPRING_PROFILES_ACTIVE: docker,observability
+    ports:
+      - "8080:8080"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      infnet-core:
+        condition: service_started
+      notificacao-service:
+        condition: service_started
+
+volumes:
+  mysql-data:

@@ -1,0 +1,189 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: eureka-server
+  namespace: infnet
+spec:
+  ports:
+    - port: 8761
+  selector:
+    app: eureka-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eureka-server
+  namespace: infnet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eureka-server
+  template:
+    metadata:
+      labels:
+        app: eureka-server
+    spec:
+      containers:
+        - name: eureka-server
+          image: infnet/eureka-server:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SERVER_PORT
+              value: "8761"
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: infnet-config
+                  key: SPRING_PROFILES_ACTIVE
+          ports:
+            - containerPort: 8761
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8761
+            initialDelaySeconds: 40
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: infnet-core
+  namespace: infnet
+spec:
+  ports:
+    - port: 8081
+  selector:
+    app: infnet-core
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infnet-core
+  namespace: infnet
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: infnet-core
+  template:
+    metadata:
+      labels:
+        app: infnet-core
+    spec:
+      containers:
+        - name: infnet-core
+          image: infnet/infnet-core:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SERVER_PORT
+              value: "8081"
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: infnet-config
+                  key: SPRING_PROFILES_ACTIVE
+          ports:
+            - containerPort: 8081
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 60
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notificacao-service
+  namespace: infnet
+spec:
+  ports:
+    - port: 8082
+  selector:
+    app: notificacao-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notificacao-service
+  namespace: infnet
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notificacao-service
+  template:
+    metadata:
+      labels:
+        app: notificacao-service
+    spec:
+      containers:
+        - name: notificacao-service
+          image: infnet/notificacao-service:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SERVER_PORT
+              value: "8082"
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: infnet-config
+                  key: SPRING_PROFILES_ACTIVE
+          ports:
+            - containerPort: 8082
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            initialDelaySeconds: 60
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: infnet
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 8080
+  selector:
+    app: api-gateway
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: infnet
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: infnet/api-gateway:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SERVER_PORT
+              value: "8080"
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: infnet-config
+                  key: SPRING_PROFILES_ACTIVE
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 45
+            periodSeconds: 10

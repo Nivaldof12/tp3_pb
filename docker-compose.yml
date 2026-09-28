@@ -1,3 +1,4 @@
+# Dev rapido: apenas RabbitMQ. Stack completa (TP5): docker/compose/docker-compose.prod.yml
 services:
   rabbitmq:
     image: rabbitmq:3.13-management

@@ -24,6 +24,7 @@
 		<module>infnet-core</module>
 		<module>notificacao-service</module>
 		<module>api-gateway</module>
+		<module>system-tests</module>
 	</modules>
 
 	<properties>
