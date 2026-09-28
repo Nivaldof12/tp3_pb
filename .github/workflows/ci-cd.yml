@@ -78,6 +78,8 @@ jobs:
     needs: test
     steps:
       - uses: actions/checkout@v4
-      - uses: azure/setup-kubectl@v4
-      - name: Dry-run apply (sem cluster K8s)
-        run: kubectl apply --dry-run=client --validate=false -f k8s/
+      - name: Validar manifests (kubeconform, sem cluster)
+        run: |
+          curl -sL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz
+          chmod +x kubeconform
+          ./kubeconform -summary -ignore-missing-schemas -kubernetes-version 1.29.0 k8s/
