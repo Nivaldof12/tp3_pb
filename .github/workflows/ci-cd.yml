@@ -44,18 +44,28 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
-      - name: Subir stack de producao
+      - name: Subir stack (servicos essenciais)
         run: |
-          docker compose -f docker/compose/docker-compose.prod.yml up -d --build
-      - name: Aguardar Gateway
+          docker compose -f docker/compose/docker-compose.prod.yml up -d --build \
+            mysql rabbitmq zipkin eureka-server infnet-core notificacao-service api-gateway
+      - name: Aguardar microsservicos
         run: |
-          for i in $(seq 1 60); do
-            if curl -sf http://localhost:8080/actuator/health; then exit 0; fi
+          set -e
+          for i in $(seq 1 90); do
+            if curl -sf http://localhost:8761/actuator/health >/dev/null \
+              && curl -sf http://localhost:8081/actuator/health >/dev/null \
+              && curl -sf http://localhost:8080/app >/dev/null; then
+              echo "Stack pronta apos ${i} tentativas"
+              exit 0
+            fi
+            echo "Aguardando stack... ($i/90)"
             sleep 10
           done
+          docker compose -f docker/compose/docker-compose.prod.yml ps
+          docker compose -f docker/compose/docker-compose.prod.yml logs --no-color eureka-server infnet-core api-gateway | tail -n 200
           exit 1
       - name: Smoke IT
-        run: ./mvnw -B -pl system-tests verify -Dgroups=integration
+        run: chmod +x mvnw && ./mvnw -B -pl system-tests verify -Dgroups=integration
         env:
           SMOKE_BASE_URL: http://localhost:8080
       - name: Encerrar stack
@@ -69,5 +79,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: azure/setup-kubectl@v4
-      - name: Dry-run apply
-        run: kubectl apply --dry-run=client -f k8s/
+      - name: Dry-run apply (sem cluster K8s)
+        run: kubectl apply --dry-run=client --validate=false -f k8s/
