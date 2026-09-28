@@ -13,6 +13,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import br.com.infnet.client.NotificacaoClient;
+import br.com.infnet.messaging.EventPublisher;
 import br.com.infnet.model.Repository.FinanceiroRepository;
 import br.com.infnet.model.Repository.UsuarioRepository;
 import br.com.infnet.model.domain.Financeiro;
@@ -26,6 +27,9 @@ class HistoricoServiceTest {
 
     @MockBean
     private NotificacaoClient notificacaoClient;
+
+    @MockBean
+    private EventPublisher eventPublisher;
 
     @Autowired
     private HistoricoService historicoService;

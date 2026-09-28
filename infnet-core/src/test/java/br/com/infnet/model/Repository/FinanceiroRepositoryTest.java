@@ -15,6 +15,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import br.com.infnet.client.NotificacaoClient;
+import br.com.infnet.messaging.EventPublisher;
 import br.com.infnet.model.domain.Financeiro;
 import br.com.infnet.model.domain.TipoFinanceiro;
 import br.com.infnet.model.domain.Usuario;
@@ -26,6 +27,9 @@ class FinanceiroRepositoryTest {
 
     @MockBean
     private NotificacaoClient notificacaoClient;
+
+    @MockBean
+    private EventPublisher eventPublisher;
 
     @Autowired
     private FinanceiroRepository financeiroRepository;

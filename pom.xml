@@ -19,6 +19,7 @@
 	<description>Projeto Infnet - Monolito + Microsservicos</description>
 
 	<modules>
+		<module>infnet-events</module>
 		<module>eureka-server</module>
 		<module>infnet-core</module>
 		<module>notificacao-service</module>

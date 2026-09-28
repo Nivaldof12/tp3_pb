@@ -21,7 +21,7 @@
 <div class="container py-4">
     <div class="hero mb-4">
         <h1 class="h3">Painel de Gestão Financeira</h1>
-        <p class="mb-0">Monolito (Usuários + Financeiro) integrado ao microsserviço de Notificações via Spring Cloud.</p>
+        <p class="mb-0">Monolito (Usuários + Financeiro) integrado ao microsserviço de Notificações via Spring Cloud e <strong>RabbitMQ</strong> (eventos assíncronos).</p>
     </div>
 
     <div class="row g-4">
@@ -56,6 +56,7 @@
                         <li><strong>Monolito:</strong> :8081</li>
                         <li><strong>Notificações:</strong> :8082</li>
                         <li><strong>Eureka:</strong> :8761</li>
+                        <li><strong>RabbitMQ:</strong> :5672</li>
                     </ul>
                 </div>
             </div>
@@ -63,8 +64,9 @@
                 <div class="card-body">
                     <h6>🔔 Microsserviço</h6>
                     <p class="small text-muted mb-0">
-                        Ao registrar um lançamento financeiro, o monolito envia uma notificação
-                        ao microsserviço via <strong>OpenFeign</strong>.
+                        Ao registrar um lançamento, o monolito publica <strong>FinanceiroCriadoEvent</strong>
+                        no RabbitMQ; o microsserviço consome a fila e grava a notificação.
+                        O painel usa <strong>Feign</strong> apenas para <em>listar</em> notificações.
                     </p>
                 </div>
             </div>

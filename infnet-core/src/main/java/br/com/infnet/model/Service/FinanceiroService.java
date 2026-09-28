@@ -1,6 +1,5 @@
 package br.com.infnet.model.Service;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -8,12 +7,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import br.com.infnet.client.NotificacaoClient;
-import br.com.infnet.client.dto.NotificacaoRequestDTO;
+import br.com.infnet.events.FinanceiroCriadoEvent;
+import br.com.infnet.messaging.EventPublisher;
+import br.com.infnet.messaging.FinanceiroEventFactory;
 import br.com.infnet.model.Repository.FinanceiroRepository;
 import br.com.infnet.model.domain.Financeiro;
-import br.com.infnet.model.domain.TipoFinanceiro;
 
 @Service
 public class FinanceiroService {
@@ -24,36 +24,22 @@ public class FinanceiroService {
     private FinanceiroRepository financeiroRepository;
 
     @Autowired
-    private NotificacaoClient notificacaoClient;
+    private EventPublisher eventPublisher;
 
+    @Transactional
     public Financeiro salvar(Financeiro financeiro) {
         Financeiro salvo = financeiroRepository.save(financeiro);
-        enviarNotificacao(salvo);
+        publicarEventoFinanceiroCriado(salvo);
         return salvo;
     }
 
-    private void enviarNotificacao(Financeiro financeiro) {
+    private void publicarEventoFinanceiroCriado(Financeiro financeiro) {
         try {
-            Long usuarioId = financeiro.getUsuario().getId();
-            String titulo;
-            String mensagem;
-            String tipo;
-
-            if (financeiro.getTipo() == TipoFinanceiro.DESPESA) {
-                titulo = "Nova despesa registrada";
-                mensagem = String.format("Despesa de R$ %s em %s foi registrada.",
-                        financeiro.getValor(), financeiro.getCategoria());
-                tipo = financeiro.getValor().compareTo(new BigDecimal("1000")) >= 0 ? "ALERTA" : "INFO";
-            } else {
-                titulo = "Nova receita registrada";
-                mensagem = String.format("Receita de R$ %s em %s foi registrada.",
-                        financeiro.getValor(), financeiro.getCategoria());
-                tipo = "SUCESSO";
-            }
-
-            notificacaoClient.criar(new NotificacaoRequestDTO(usuarioId, titulo, mensagem, tipo));
+            FinanceiroCriadoEvent evento = FinanceiroEventFactory.criarEvento(financeiro);
+            String routingKey = FinanceiroEventFactory.routingKey(financeiro);
+            eventPublisher.publicar(evento, routingKey);
         } catch (Exception ex) {
-            log.warn("Nao foi possivel enviar notificacao ao microsservico: {}", ex.getMessage());
+            log.warn("Falha ao publicar evento FinanceiroCriado: {}", ex.getMessage());
         }
     }
 

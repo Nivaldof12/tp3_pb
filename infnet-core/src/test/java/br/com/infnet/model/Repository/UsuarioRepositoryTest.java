@@ -14,6 +14,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import br.com.infnet.client.NotificacaoClient;
+import br.com.infnet.messaging.EventPublisher;
 import br.com.infnet.model.domain.Usuario;
 
 @SpringBootTest
@@ -23,6 +24,9 @@ class UsuarioRepositoryTest {
 
     @MockBean
     private NotificacaoClient notificacaoClient;
+
+    @MockBean
+    private EventPublisher eventPublisher;
 
     @Autowired
     private UsuarioRepository usuarioRepository;
